@@ -1,0 +1,71 @@
+version: '3'
+services:
+  product-app:
+    build: 
+      context: ./product
+      args:
+        NODE_ENV: development
+    container_name: product-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./product:/product-app/src:ro
+      - /product/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+    depends_on:
+      - rabbitmq
+      - mongodb
+    links:
+      - rabbitmq
+  order-app:
+    build: 
+      context: ./order
+      args:
+        NODE_ENV: development
+    container_name: order-app
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./order:/order-app/src:ro
+      - /order/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=8001
+    depends_on:
+      - rabbitmq
+      - mongodb
+    links:
+      - rabbitmq
+  mongodb:
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - micro-db:/data/db
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+        - 5672:5672
+        - 15672:15672
+    volumes:
+        - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+        - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    networks:
+        - rabbitmq_go_net
+  haproxy:
+    build: ./haproxy
+    container_name: haproxy
+    ports:
+      - 8080:80
+    depends_on:
+      - product-app
+      - order-app
+volumes:
+  micro-db:
+networks:
+  rabbitmq_go_net:
+    driver: bridge
